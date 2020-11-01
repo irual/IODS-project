@@ -4,10 +4,41 @@
 *Write a short description about the course and add a link to your GitHub repository here. This is an R Markdown (.Rmd) file so you should use R Markdown syntax.*
 
 ```{r}
-# This is a so-called "R chunk" where you can write R code.
-
 date()
-
 ```
-The text continues here.
 
+![](/home/ls/R/projekteja/profiili_200x200.png)
+
+### Feelings and expectations
+
+How am I feeling? Currently I'm a bit exhausted with all the technical challenges I had with Git and Rstudio integration with several computers. After installing brand new Linux system things were going better though.  
+
+So the course started with  
+
+* problems  
+* troubles  
+* challenges
+
+...but from this on I'm expecting
+
+* easiness
+* joy
+* wisdom.  
+
+I expect to learn R and Git integration, _and already did_. Looking forward to hear ideas for some **data analysis**: I have experience with another software and R packages as well, but with R it's sometimes difficult to see which packages and tehchiques are used and recommended.  
+
+I heard about this course when Kimmo was advertising it via Statnet mailing list.  
+
+### R calculations...  
+
+```{r}
+1+1
+0/0
+```
+### ...and inline code.  
+
+Square of two equals `r sqrt(2)`.
+
+### My GithHub repository:  
+
+[link](https://github.com/irual/IODS-project)
