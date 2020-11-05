@@ -37,8 +37,8 @@ I heard about this course when Kimmo was advertising it via Statnet mailing list
 ```
 ### ...and inline code.  
 
-Square of two equals `r sqrt(2)`.
+Square root of two equals `r sqrt(2)`.
 
 ### My GithHub repository:  
 
-[link](https://github.com/irual/IODS-project)
+[https://github.com/irual/IODS-project](https://github.com/irual/IODS-project)
