@@ -110,7 +110,7 @@ Coefficents of determination: unadjusted 19.1%, adjusted 18.6%. Both are a bit l
 #6. Cooks distances vs Leverage
 
 #Defining plot matrix of 1x3. Pin defines 1:1 aspect ratio for each sub plot.
-par(mfrow = c(1,3), pin=c(1.8,1.8))
+par(mfrow = c(1,3), pin=c(1.75,1.75))
 plot(glm3, which=c(1,2,5))
 ```
 
