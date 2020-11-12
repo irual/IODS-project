@@ -1,0 +1,315 @@
+# Introduction to Open Data Science 2020, Week 3
+## Logistic regression analysis excercise
+
+This week's exercise is about logistic regression analysis. Tasks include:
+
+* data import and manipulation 
+* data exploration 
+* single and multiple predictor logistic regression analysis including model diagnostics and interpretation
+* describing accuracy and loss
+* cross validation.
+
+```{r}
+date()
+```
+
+Source data: Secondary school student alcohol consumption in Portugal (P. Cortez and A. Silva. Using Data Mining to Predict Secondary School Student Performance). Center for Machine Learning and Intelligent Systems at the University of California, Irvine.
+
+Data: [https://archive.ics.uci.edu/ml/datasets/Student+Performance] (https://archive.ics.uci.edu/ml/datasets/Student+Performance).
+
+Description: [https://archive.ics.uci.edu/ml/datasets/Student+Performance#]
+(https://archive.ics.uci.edu/ml/datasets/Student+Performance#).
+
+### 2. Starting routines and getting to know data
+
+```{r}
+#Setting working path
+setwd("/home/ls/R/projekteja/IODS-project/")
+
+#Reading the data created with "creatle_alc.R".
+alc <- read.table("./data/alc.rData")
+```
+
+Loading library dplyr for further DM needs. 
+```{r}
+library(dplyr)
+
+#Variable dimensions, variable names and some values.
+glimpse(alc)
+```
+
+So there are 370 cases and 51 variables. We'll concentrate on  
+- **alc_use**, which is derived as a mean of _Dalc_ and _Walc_ (workday and weekend alcohol consumption, varying from 1 - very low to 5 - very high)  
+- **high_use**, which is dichotomization of _alc_use_ with cut-point 2.
+
+### 3. Selecting variables for further analysis
+
+Choosing four interesting variables for further analysis. Response variable will be high/low alcohol consumpition.
+
+Interesting/potential predictors I chose:  
+1. _sex - student's sex (binary: 'F' - female or 'M' - male)._ Gender will definitely has an effect on alcohol consumption. On average males drink more. We'll see how it goes here.  
+2. _internet - Internet access at home (binary: yes or no)._ Data is from 2014. Could be possible that subjects with internet connection are skulking at their homes instead of having a good time in restaurants etc. So internet access may decrease alcohol consumption. Maybe.  
+3. _romantic - with a romantic relationship (binary: yes or no)._ Having a spouse may cause a lot of stress which leads to drinking (helping or not). On the other hand, relationship may decrease drinking (all time goes sitting hand in hand or spouse may prohibit alcohol use. Who knows, there are several possible associations.  
+4. _absences - number of school absences (numeric: from 0 to 93)._ Drinking may cause school absences. Or there can be some common factor causing both absences and drinking. Caution: absences is count variable while other ones are dichotomous.
+
+These predictors may have an effect, but after all it's hard to know beforehand. Let's explore variables and associations.
+
+### 4. Exploring associations of alchol use and predictor. Tables and plots.
+
+```{r}
+#Loading ggplot2 for better plotting opportunities
+library(ggplot2)
+
+g1 <- ggplot(data = alc, aes(x = high_use))
+
+g1 + geom_bar(aes(fill=sex))
+g1 + geom_bar(aes(fill=internet))
+g1 + geom_bar(aes(fill=romantic))
+g1 + geom_boxplot(aes(y=absences, fill=high_use)) +
+  stat_summary(fun=mean, geom="point", aes(y=absences), col="blue", size=5, shape="diamond") +
+  theme(legend.position="none")
+```
+
+Those were the graphs. Gender distribution seems to be a bit different in alcohol groups. Mean absence counts seems to higher in high use group (mean=blue diamond symbol). Absence distributions seems to be higly negatively skew, but at least distributions are similary shaped in both group. This is not perfect situation, but usually logistic regression tolerates quite well such phenomenon.  
+
+One-way table and crosstabulation of alcohol use vs. predictors. Original counts.
+  
+```{r}
+table("High alcohol use"=alc$high_use)
+table("High alcohol use"=alc$high_use, "Sex"=alc$sex)
+table("High alcohol use"=alc$high_use, "Internet access at home (binary: yes or no)"=alc$internet)
+table("High alcohol use"=alc$high_use, "Romantic relationship (binary: yes or no)"=alc$romantic)
+
+#Basic descriptives by group
+tapply(alc$absences, alc$high_use, summary)
+```
+Response counts are 259 (low) and 111 (high alcohol consumption). Crosstabs shows the same numbers as the previous plots. Abscense has higher mean in high alcohol use group (6.4 vs. 3.7). 
+
+Let's have percentages (or proportions, to be exact) where figures are scaled for each row sum to be 100%. This can be achieved using pipe and function call prop.table(margin=1).
+
+```{r}
+table("High alcohol use"=alc$high_use, "Sex"=alc$sex) %>% prop.table(margin=1)
+table("High alcohol use"=alc$high_use, "Internet access at home (binary: yes or no)"=alc$internet) %>% prop.table(margin=1)
+table("High alcohol use"=alc$high_use, "Romantic relationship (binary: yes or no)"=alc$romantic) %>% prop.table(margin=1)
+```
+Proportion of males is higher in high alcohol consumption group. Gender proportions in internet access and romantic relationship groups are pretty much the same.
+
+### 5. Logistic regression analysis
+
+General logistic model with multiple predictors can be defined as
+\[ \log\left(\frac{p({\bf x})}{1 - p({\bf x})}\right) = \beta_0 + \beta_1 x_1 + \ldots + \beta_{p - 1} x_{p - 1} \]
+
+Let's fit binary response logistic model with multiple predictors with glm function. Outcome is high_use with TRUE indicating high alcohol consumption as an event.
+
+```{r}
+# find the model with glm()
+# Model 1 (full model)
+m1 <- glm(high_use ~ sex + internet + romantic + absences, data = alc, family = "binomial")
+summary(m1)
+```
+Access to internet doesn't seem to be statistically significant predictor for high alcohol use. Let's remove it from the model and try again.
+
+```{r}
+#Model 2
+m2 <- glm(high_use ~ sex + romantic + absences, data = alc, family = "binomial")
+summary(m2)
+```
+
+Couple relationship either doesn't seem to be statistically significant predictor for high alcohol. Let's remove it from the model as well and try again.
+
+```{r}
+#Model 3 (final model)
+m3 <- glm(high_use ~ sex + absences, data = alc, family = "binomial")
+summary(m3)
+```
+Now both remaining factors are statistically significant (p<0.001), we can leave the model as it is. Slope parameter for Sex (being male as an event) is 1.03, with standard error 0.24, for the event of alcohol consumption being high. However, this is log-odds, which may be difficult to interpret. Therefor, let's calculate and show Odds Ratios which are exponentiated versions of shown estimates, i.e. constant _e_ is raised to power of that number.  
+
+This is somewhat plausible result. I'm still surprised that internet access and couple relationsip didn't have any significant role. 
+
+```{r}
+# compute odds ratios (OR)
+OR <- coef(m3) %>% exp
+
+# compute confidence intervals (CI)
+CI <- confint(m3) %>% exp
+
+# print out the odds ratios with their confidence intervals
+cbind(OR, CI)
+```
+So the Odds Ratio (95% Confidence Interval) for Sex is 2.81 (1.76-4.58) and for absences 1.10 (1.05-1.16). Males has 2.8-fold odds of becoming to high alcohol consumption group compared to females. Similarly, single unit increase in absence count scale makes odds of being in high alcohol consumption group grow 1.1-fold, i.e. it increases 10%.  
+
+Just to be sure, let's fit single predictor model and compare manual OR calculation with R model results.
+
+```{r}
+#Model 4 (single predictor model)
+m4 <- glm(high_use ~ sex, data = alc, family = "binomial")
+OR <- coef(m4) %>% exp
+CI <- confint(m4) %>% exp
+cbind(OR, CI)
+
+# tabulate the target variable versus the predictor
+table(high_use = alc$high_use, alc$sex) 
+```
+OR for sex in single predictor model was 2.5040650. We are supposed to get the same result when calculating males/girls ratio in high vs. low alcohol consumption group, i.e.
+
+\[ \frac{154/105} {41/70}  \]
+```{r}
+#Calculate with R
+(154/105)/(41/70)  
+```
+Yes, it works.
+
+### 6. Studying predictive power of logistic regression model
+
+Let's see how previous model #3 is able predict alcohol usage.  
+
+Providing a 2x2 cross tabulation of predictions versus the actual values. First we need to predict values, add them into data set, categorize results and peep the data.
+
+```{r}
+# predict() the probability of high_use
+probabilities <- predict(m3, type = "response")
+
+# add the predicted probabilities to 'alc'
+alc <- mutate(alc, probability = probabilities)
+
+# use the probabilities to make a prediction of high_use
+alc <- mutate(alc, prediction = probability > 0.5)
+
+# see the last ten original classes, predicted probabilities, and class predictions
+select(alc, sex, probability, high_use, prediction) %>% tail(15)
+```
+
+Now we are ready to see how predictions matches the reality.
+
+```{r}
+# tabulate the target variable versus the predictions
+table(high_use = alc$high_use, prediction = alc$prediction) 
+```
+So, in high alcohol use group 86 cases are correctly predicted to be in that group, 25 cases are predicted to wrong group. In low alc. group prediction is correct in 251 case and incorrect in 8 case. Let's see percentages.
+
+```{r}
+table(high_use = alc$high_use, prediction = alc$prediction) %>% prop.table(margin=1)
+```
+In low alc. group prediction goes right in 97% cases, in high group prediction is correct only in 23% of cases. Clearly model is prone to find cases of low alcohol consumption, but has difficulties to find users of higher level of alcohol.  
+
+Let's plot the results.
+
+```{r}
+# Some data management. Proportions into data frame.
+props <- as.data.frame(table(high_use = alc$high_use, prediction = alc$prediction) %>% prop.table(margin=1))
+
+# Plotting with ggplot2
+ggplot(data = props) +
+  geom_bar(stat="identity", aes(x=high_use, y=Freq, fill=prediction)) +
+  scale_y_continuous(labels=scales::percent) +
+  ylab("Proportion")
+
+# Plotting with ggplot2
+ggplot(data = alc) +
+  geom_point(aes(x = probability, y = high_use, color = prediction), size=5, alpha=0.5) +
+  ylab("High alcohol use")
+```
+
+This shows the same story. With selected probability 50% model will catch most low users, but is not able to detect most cases in high alcohol use group. Maybe prob. threshold of 50% should be raised?
+
+### 7. 10-fold cross-validation ("bonus task")
+
+Let's perform 10-fold cross-validation on our model and see if it has better test set performance 
+(smaller prediction error using 10-fold cross-validation) compared to the model introduced in DataCamp (which had about 0.26 error).
+
+```{r}
+# define a loss function (mean prediction error)
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+
+# compute the average number of wrong predictions in the (training) data
+loss_func(class = alc$high_use, prob = alc$probability)
+
+library(boot)
+#10-fold cross-validation
+cv <- cv.glm(data = alc, cost = loss_func, glmfit = m3, K = 10)
+
+# average number of wrong predictions in the cross validation
+cv$delta[1]
+```
+So this is only slightly lower prediction error than in DataCamp excercise - the same in practise.
+
+### 8. 10-fold cross-validation comparison ("super-bonus task")
+
+Let's conduct comparison of several cross-validations with different sets of predictors. Starting with a very high number of predictors and exploring the changes in the training and testing errors as moving to models with less predictors. 
+
+There was some problems with conducting analysis with huge number of analysis, estimation did not converge. Se let's start with single predictor model and add predictors one by one until we're in 20.
+
+I first tried to do the whole thing with R functions, letting R to generate all models, validations and error estimates automatically. However, I wasn't clever enough to create lists of predictors for glm without additional quotes, so I was stuck. Now modelling etc. is done manually model by model, which is akward...
+
+```{r}
+m1  <- glm(high_use ~ school, data = alc, family = "binomial")
+m2  <- glm(high_use ~ school + sex + age, data = alc, family = "binomial")
+m3  <- glm(high_use ~ school + sex + age + address, data = alc, family = "binomial")
+m4  <- glm(high_use ~ school + sex + age + address + famsize, data = alc, family = "binomial")
+m5  <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu, data = alc, family = "binomial")
+m6  <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu, data = alc, family = "binomial")
+m7  <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob, data = alc, family = "binomial")
+m8  <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob, data = alc, family = "binomial")
+m9  <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason, data = alc, family = "binomial")
+m10 <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason + guardian, data = alc, family = "binomial")
+m11 <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason + guardian + traveltime, data = alc, family = "binomial")
+m12 <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason + guardian + traveltime + studytime, data = alc, family = "binomial")
+m13 <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason + guardian + traveltime + studytime + schoolsup, data = alc, family = "binomial")
+m14 <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason + guardian + traveltime + studytime + schoolsup + famsup, data = alc, family = "binomial")
+m15 <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason + guardian + traveltime + studytime + schoolsup + famsup + activities, data = alc, family = "binomial")
+m16 <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason + guardian + traveltime + studytime + schoolsup + famsup + activities + nursery, data = alc, family = "binomial")
+m17 <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason + guardian + traveltime + studytime + schoolsup + famsup + activities + nursery + higher, data = alc, family = "binomial")
+m18 <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason + guardian + traveltime + studytime + schoolsup + famsup + activities + nursery + higher + internet, data = alc, family = "binomial")
+m19 <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason + guardian + traveltime + studytime + schoolsup + famsup + activities + nursery + higher + internet + romantic, data = alc, family = "binomial")
+m20 <- glm(high_use ~ school + sex + age + address + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason + guardian + traveltime + studytime + schoolsup + famsup + activities + nursery + higher + internet + romantic + famrel, data = alc, family = "binomial")
+```
+
+That was the modeling. Next, let's conduct 10-fold cross-validation for each model.
+
+```{r}
+cv1  <- cv.glm(data = alc, cost = loss_func, glmfit = m1,  K = 10)
+cv2  <- cv.glm(data = alc, cost = loss_func, glmfit = m2,  K = 10)
+cv3  <- cv.glm(data = alc, cost = loss_func, glmfit = m3,  K = 10)
+cv4  <- cv.glm(data = alc, cost = loss_func, glmfit = m4,  K = 10)
+cv5  <- cv.glm(data = alc, cost = loss_func, glmfit = m5,  K = 10)
+cv6  <- cv.glm(data = alc, cost = loss_func, glmfit = m6,  K = 10)
+cv7  <- cv.glm(data = alc, cost = loss_func, glmfit = m7,  K = 10)
+cv8  <- cv.glm(data = alc, cost = loss_func, glmfit = m8,  K = 10)
+cv9  <- cv.glm(data = alc, cost = loss_func, glmfit = m9,  K = 10)
+cv10 <- cv.glm(data = alc, cost = loss_func, glmfit = m10, K = 10)
+cv11 <- cv.glm(data = alc, cost = loss_func, glmfit = m11, K = 10)
+cv12 <- cv.glm(data = alc, cost = loss_func, glmfit = m12, K = 10)
+cv13 <- cv.glm(data = alc, cost = loss_func, glmfit = m13, K = 10)
+cv14 <- cv.glm(data = alc, cost = loss_func, glmfit = m14, K = 10)
+cv15 <- cv.glm(data = alc, cost = loss_func, glmfit = m15, K = 10)
+cv16 <- cv.glm(data = alc, cost = loss_func, glmfit = m16, K = 10)
+cv17 <- cv.glm(data = alc, cost = loss_func, glmfit = m17, K = 10)
+cv18 <- cv.glm(data = alc, cost = loss_func, glmfit = m18, K = 10)
+cv19 <- cv.glm(data = alc, cost = loss_func, glmfit = m19, K = 10)
+cv20 <- cv.glm(data = alc, cost = loss_func, glmfit = m20, K = 10)
+```
+
+Let's create a data frame comprising deltas and number of predictors.
+
+```{r}
+deltas <- c(cv1$delta[1],  cv2$delta[1],  cv3$delta[1],  cv4$delta[1],  cv5$delta[1],
+            cv6$delta[1],  cv7$delta[1],  cv8$delta[1],  cv9$delta[1],  cv10$delta[1],
+            cv11$delta[1], cv12$delta[1], cv13$delta[1], cv14$delta[1], cv15$delta[1],
+            cv16$delta[1], cv17$delta[1], cv18$delta[1], cv19$delta[1], cv20$delta[1])
+
+preds <- c(1:20)
+
+compdata <- data.frame(deltas,preds)
+```
+
+And plotting the results.
+
+```{r}
+ggplot(compdata, aes(x=preds, y=deltas)) +
+  geom_line() 
+```
+
+We'll see that average amount of wrong predictions in the cross validation is not increasing/decreasing linearly. However, looks like error is mostly increasing when more complicated models are fitted. Simple models are more preferable.
