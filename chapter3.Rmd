@@ -15,10 +15,9 @@ date()
 
 Source data: Secondary school student alcohol consumption in Portugal (P. Cortez and A. Silva. Using Data Mining to Predict Secondary School Student Performance). Center for Machine Learning and Intelligent Systems at the University of California, Irvine.
 
-Data: [https://archive.ics.uci.edu/ml/datasets/Student+Performance] (https://archive.ics.uci.edu/ml/datasets/Student+Performance).
+Data: https://archive.ics.uci.edu/ml/datasets/Student+Performance.
 
-Description: [https://archive.ics.uci.edu/ml/datasets/Student+Performance#]
-(https://archive.ics.uci.edu/ml/datasets/Student+Performance#).
+Description: https://archive.ics.uci.edu/ml/datasets/Student+Performance#.
 
 ### 2. Starting routines and getting to know data
 
