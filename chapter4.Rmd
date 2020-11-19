@@ -1,0 +1,401 @@
+# Week 4, Clustering and Classification
+
+This week's exercise is about cluster analysis and classification. Tasks include:
+
+* data exploration incl. correlations
+* standardization
+* linear discriminant analysis
+* K-means clustering
+* DM for next week data.
+
+## 2. Starting routines and getting to know data
+
+Setting working path, loading library and data set.
+
+```{r}
+#Setting working path
+setwd("/home/ls/R/projekteja/IODS-project/")
+
+# access the MASS package
+library(MASS)
+
+# load the data
+data("Boston")
+```
+
+Boston data is included in the MASS package. Data is about housing values in suburbs of Boston city, with other demographic and environmental information as well.
+Further information: https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Boston.html.
+
+List of variables (from above url):  
+
+Variable name  | Definition  
+------------- | -------------  
+**crim**  | per capita crime rate by town.  
+**zn**  | proportion of residential land zoned for lots over 25,000 sq.ft.  
+**indus**  | proportion of non-retail business acres per town.  
+**chas**  | Charles River dummy variable (= 1 if tract bounds river; 0 otherwise).  
+**nox**  | nitrogen oxides concentration (parts per 10 million).  
+**rm**  | average number of rooms per dwelling.  
+**age**  | proportion of owner-occupied units built prior to 1940.  
+**dis**  | weighted mean of distances to five Boston employment centres.  
+**rad**  | index of accessibility to radial highways.  
+**tax**  | full-value property-tax rate per \$10,000.  
+**ptratio**  | pupil-teacher ratio by town.  
+**black**  | 1000(Bk - 0.63)$^{2}$ where Bk is the proportion of blacks by town.  
+**lstat**  | lower status of the population (percent).  
+**medv**  | median value of owner-occupied homes in \$1000s.  
+
+Sources:  
+- _Harrison, D. and Rubinfeld, D.L. (1978) Hedonic prices and the demand for clean air. J. Environ. Economics and Management 5, 81–102._  
+- _Belsley D.A., Kuh, E. and Welsch, R.E. (1980) Regression Diagnostics. Identifying Influential Data and Sources of Collinearity. New York: Wiley._
+
+
+
+Loading library dplyr for further DM needs.
+```{r}
+library(dplyr) 
+
+#Data dimensions, variable names and some values.
+glimpse(Boston)
+summary(Boston)
+```
+The Boston data frame has 506 rows and 14 columns. All data is numeric. Variables are continuous expect binary variable **chas**, _("1 if tract bounds Charles River; 0 otherwise")_. Response/target variable will be **crim** _("per capita crime rate by town")_, which has range 0.06-89.0 and mean=3.6 & median=0.26. Difference between mean and median suggests strongly skewed distribution.
+
+## 3. Graphical overview and summaries
+
+Descriptives were already shown in step 2. Variable distributions have clearly distinct variances and locations. Some variables seem to be strongly skewed as well. Let's have a visual.
+
+```{r}
+# Bivariate scatter plots (excluding 4th variable chas)
+
+par(mfrow = c(1,2), pin=c(1.75,1.75))
+hist(Boston$crim,col="blue",xlab=NULL)
+boxplot(Boston$crim,col="blue", main="Boxplot of Boston$crim")
+```
+
+We can see that crime distribution is strongly skewed. We are going to standardize and categorize variables later. 
+
+Pairwise distributions (the plot is enlarged with defining additional R-chunk parameters, which are not shown in output):
+
+```{r fig1, out.width = '100%', fig.asp=1}
+# Bivariate scatter plots (excluding 4th variable chas)
+pairs(Boston[,c(1:3,5:dim(Boston)[2])], pch=19, cex=0.05, lower.panel=NULL)
+```
+
+Scatter plot matrix shows that bivariate distributions are not always multinormal (or almost never, to be honest). Some distributions do have large empty areas and/or outlier observations, like **rad** _(index of accessibility to radial highways)_. Not good.
+
+Some mutual bivariate associations seems to be stronger than others. Let's calculate correlations.
+
+```{r}
+# calculate the correlation matrix and round it
+cor_matrix<-cor(Boston) %>% round(digits=2)
+
+# print the correlation matrix
+cor_matrix
+```
+
+These are Pearson correlation coefficients, which are not always reliable in a case of non-normality. But let's keep them anyway, like in Datacamp. However, it's challenging to assimilate so many numbers. Better to have a visualization.
+
+```{r}
+# installing and/or loading corrplot library for correlation coefficient visualization
+if (!require("corrplot")) {
+   install.packages("corrplot")
+   library(corrplot)
+}
+
+# visualize the correlation matrix
+corrplot.mixed(cor_matrix, tl.cex=0.75, number.cex=0.75, number.digits=2)
+```
+
+That's fancy way to present correlation coefficient. We can directly see that there are some strong correlations indicated by big spheres, blue ones for negative and red ones for positive values. Highest value is +0.91, which is between **rad** and **tax** (_index of accessibility to radial highways_ and _full-value property-tax rate per \$10,000_).
+
+## 4. Standardization and categorization
+
+```{r fig2, out.width='100%', fig.asp = 1}
+# center and standardize variables
+# 'as.data.frame' is needed since it makes referring variables easier later
+boston_scaled <- as.data.frame(scale(Boston))
+
+# Bivariate scatter plots
+pairs(boston_scaled, pch=19, cex=0.05, lower.panel=NULL)
+
+#Means, second argument refers to columns
+apply(boston_scaled, 2, FUN=mean)
+
+#Variances, second argument refers to columns
+apply(boston_scaled, 2, FUN=var)
+```
+
+We can see that now all variables has been standardized, i.e. scaled to have mean=0 (or very close to it, at least) and variance=1. This can't heal difficult distributions like **rad** or **chas** has, though. Correlations are the same, so they are not shown here again.
+
+Note: For some reason scaling must be for R data.frame object, otherwise further operations won't work. This means that command  
+&nbsp;&nbsp;&nbsp; _boston_scaled <- scale(Boston)_  
+is not enought, but I need to put it this way:  
+&nbsp;&nbsp;&nbsp; _boston_scaled <- as.data.frame(scale(Boston))_.  
+So strange... And the same applies for task #7.
+
+### Categorization
+
+Creating categorized version of crime variable. Cut points are quantiles, so number of categories will be four.
+
+```{r}
+# create a quantile vector of crim and print it
+bins <- quantile(boston_scaled$crim)
+bins
+
+# create a categorical variable 'crime'
+crime <- cut(boston_scaled$crim, breaks=bins, include.lowest=TRUE, labels=c("low","med_low","med_high","high"))
+
+# look at the table of the new factor crime
+table(crime)
+```
+
+Looks fine, distribution is as close to 25/25/25/25 percentages as possible.
+
+```{r}
+# remove original crim from the dataset
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+
+# add the new categorical value to scaled data
+boston_scaled <- data.frame(boston_scaled, crime)
+```
+
+Now original **crim** has been replaced to categorical **crime**.
+
+### Dividing the dataset to train and test sets
+
+```{r}
+# number of rows in the Boston dataset 
+n <- nrow(boston_scaled)
+
+# choose randomly 80% of the rows
+ind <- sample(n,  size = n * 0.8)
+
+# create train set
+train <- boston_scaled[ind,]
+
+# create test set 
+test <- boston_scaled[-ind,]
+
+dim(train)
+dim(test)
+```
+
+Now datasets **train** and **test** has been created, with the first comprising 80% and latter 20% of original cases. 
+
+## 5. Linear discriminant analysis
+
+Fitting LDA model on the train set with crime rate categorizations as target variable. Other variables are used as predictors.
+
+```{r}
+# linear discriminant analysis
+lda.fit <- lda(crime ~ ., data = train)
+
+# print the lda.fit object
+lda.fit
+
+classes <- as.numeric(train$crime)
+
+# LDA (bi)plot
+plot(lda.fit, col=classes)
+```
+
+Interestingly plot() function adds group names as data value symbols independently on pch parameters. For example, following commands are yielding identical plots:  
+- *plot(lda.fit, col=classes, pch=19)*  
+- *plot(lda.fit, col=classes, pch=classes)*  
+I have no clue why. Showing category value as symbols looks very awkward.
+
+Anyway, plot visualizes how target variable classes are separated by the linear combinations of predictor variables. Looks like crime quantile groups are mostly very nicely separated. _High_ crime group seems to be most consistent while _med_high_ is most scattered around. 
+
+Let's enhance plot by adding arrows into it, just like in Datacamp exercise. 
+
+```{r}
+# the function for lda biplot arrows
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+
+plot(lda.fit, col=classes, pch=classes, dimen=2)
+lda.arrows(lda.fit, myscale = 2)
+```
+
+Looks like **rad** _("index of accessibility to radial highways")_ is an important factor here. Watch out for living close to radial highways!
+
+## 6. Predicting crime with LDA model
+
+```{r}
+# save the correct classes from test data
+correct_classes <- test$crime
+
+# remove the crime variable from test data
+test <- dplyr::select(test, -crime)
+
+# predict classes with test data
+lda.pred <- predict(lda.fit, newdata = test)
+
+# cross tabulate the results
+table(correct = correct_classes, predicted = lda.pred$class)
+```
+Cross-tabulation shows that in 13+17+15+20 cases (which is `r 13+17+15+20`) prediction is fully correct, leaving out `r dim(test)[1] -13-17-15-20` more or less incorrect cases. Proportion of correct predictions is hence `r (13+17+15+20)/dim(test)[1]`. We can see that if prediction has gone wrong, it has still has been mostly placed into category close to the real one. And, we can see that all 20 high crimes cases are correctly predicted. Not bad at all, I guess.
+
+## 7. Distances, K-means clustering
+
+### Euclidian distances
+
+```{r}
+# reloading the Boston dataset 
+data('Boston')
+
+# standardizing the dataset
+# again, as.data.frame is needed, otherwise further operations won't work.
+boston_scaled <- as.data.frame(scale(Boston))
+
+# euclidean and manhattan distance matrix
+dist_eu <- dist(boston_scaled)
+dist_man <- dist(boston_scaled, method="manhattan")
+
+# look at the summaries of the distances
+summary(dist_man)
+summary(dist_man)
+
+par(mfrow = c(2,2), pin=c(1.75,1.75))
+#Euclidean
+hist(dist_eu,col="blue",xlab=NULL)
+boxplot(dist_eu,col="blue", main="Boxplot of dist_eu")
+#Manhattan
+hist(dist_man,col="blue",xlab=NULL)
+boxplot(dist_man,col="blue", main="Boxplot of dist_man")
+```
+
+Mean value for Euclidean distance is around 5, range is 0.1 - 14.4. Distribution is slightly skewed to the right.
+
+Mean value for Manhattan distance is around 14, range is 0.3 - 48.9. Distribution is a bit more skewed to the right.
+
+### K-means clustering
+
+Let's conduct k-means clustering with three clusters, which, I think, might be good low-but-not-super-low number for centers/clusters.
+
+```{r fig3, out.width = '100%', fig.asp=1}
+# k-means clustering with three clusters (=semirandomly selected number)
+km <-kmeans(boston_scaled, centers=3)
+
+# plot the Boston dataset with clusters
+pairs(boston_scaled, col=km$cluster, pch=19, cex=0.05, lower.panel=NULL)
+```
+
+Three cluster solutions might be plausible. Groups are formed nicely. But let's see which is optimal number based on calculations.
+
+
+```{r}
+# Setting a seed for random generator
+set.seed(322654435)
+
+# determine the number of clusters
+k_max <- 10
+
+# calculate the total within sum of squares
+twcss <- sapply(1:k_max, function(k){kmeans(boston_scaled, k)$tot.withinss})
+
+# visualize the results
+library(ggplot2)
+ggplot() + 
+  geom_line(aes(x=1:k_max, y=twcss)) +
+  scale_x_continuous(breaks=c(1:10)) +
+  xlab("Number of cluster")
+```
+
+If the principle is that _the optimal number of clusters is when the value of total WCSS changes radically_, then two clusters would be good choice now. After two clusters _total within sum of squares_ decreased slower. So let's conduct k-means clustering again, now with two centers, and visulize results.
+
+```{r fig4, out.width = '100%', fig.asp=1}
+# k-means clustering
+km2 <-kmeans(boston_scaled, centers=2)
+
+# plot the Boston dataset with clusters
+pairs(boston_scaled, col=km2$cluster, pch=19, cex=0.05, lower.panel=NULL)
+```
+
+This looks plausible as well. Dot colors indicating cluster seem to mostly create distinct groups in these subplots.
+
+## Bonus task
+
+Reloading and scaling Boston data set. AFAIK, this is not needed to done again, but let's follow instructions. K-means clustering with three center. Fitting LDA with cluster as a target variable, keeping all Boston variables as predictors. Adding arrows with previously created custom function, replacing default red color with blue for better definition. Aspect ratio, text size and arrow length scaling changed from default values as well.
+
+```{r fig5, out.width = '75%', fig.asp=1}
+
+# reloading the Boston dataset 
+data('Boston')
+boston_scaled <- as.data.frame(scale(Boston))
+
+# k-means clustering with three centers
+km3 <- kmeans(boston_scaled, centers=3)
+km3
+
+# LDA with cluster as a target
+lda2.fit <- lda(km3$cluster ~ ., data=boston_scaled)
+
+# print the lda.fit object
+lda2.fit
+
+# target classes as numeric
+classes <- as.numeric(km3$cluster)
+
+# plot the lda results
+plot(lda2.fit, col=classes, pch=classes)
+
+# Using previously defined function for lda biplot arrows
+lda.arrows(lda2.fit, color="blue", tex=0.8, myscale=5)
+```
+
+Looks like variables **nox** _(nitrogen oxides concentration, parts per 10 million)_, **tax** _(full-value property-tax rate per \$10,000)_ and **zn** _(proportion of residential land zoned for lots over 25,000 sq.ft)_ are the most influental separators for the clusters among all variables, based on arrow lengths. 
+
+## Super-Bonus task
+
+Running the given code for the scaled train data. The code creates a matrix product, which is a projection of the data points. Installing and loading plotly package and creating 3D plots.
+
+Adjusting the code. Defining symbol color as train data set crime class. Drawing another 3D plot where the color is defined by the clusters of the k-means. Plots are only shown in RStudio viewer, so no output in course diary.
+
+```{r}
+# creating train set (again)
+train <- boston_scaled[ind,]
+
+#K-means clustering with three centers:
+km4 <- kmeans(train, centers=3)
+
+#restoring original crime classification into train data
+crime <- cut(train$crim, breaks=bins, include.lowest=TRUE, labels=c("low","med_low","med_high","high"))
+
+#model_predictors <- dplyr::select(train, everything())
+model_predictors <- dplyr::select(train, c(-crim))
+#dim(model_predictors)
+
+# check the dimensions
+dim(model_predictors)
+dim(lda.fit$scaling)
+
+# matrix multiplication
+matrix_product <- as.matrix(model_predictors) %*% lda.fit$scaling
+matrix_product <- as.data.frame(matrix_product)
+
+# installing and/or loading plotly package for 3D plot
+if (!require("plotly")) {
+   install.packages("plotly")
+   library(plotly)
+}
+
+#Create a 3D plot (Cool!) of the columns of the matrix product by typing the code below.
+#plot_ly(x=matrix_product$LD1, y=matrix_product$LD2, z=matrix_product$LD3, type='scatter3d', mode='markers')
+
+#Graph 1
+plot_ly(x=matrix_product$LD1, y=matrix_product$LD2, z=matrix_product$LD3, color=crime, type='scatter3d', mode='markers') 
+
+#Graph 2
+plot_ly(x=matrix_product$LD1, y=matrix_product$LD2, z=matrix_product$LD3, color=as.factor(km4$cluster), type='scatter3d', mode='markers')
+
+```
+
+How do plots differ? Well, data points are identical in x-y-z space. Only number of categories/colors (4 vs. 3) differ, so do group distribution. After all, both plots are telling pretty much the same story: there is one clearly distinct blob (upper quartile of crime rates) while rest of dots are somewhat grouped as well. Maybe there is bit more overlapping (variation) in crime category plot.

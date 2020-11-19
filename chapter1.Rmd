@@ -1,13 +1,5 @@
 
-# About the project
-
-*Write a short description about the course and add a link to your GitHub repository here. This is an R Markdown (.Rmd) file so you should use R Markdown syntax.*
-
-```{r}
-date()
-```
-
-![](/home/ls/R/projekteja/profiili_200x200.png)
+# Week 1, Introduction
 
 ### Feelings and expectations
 
@@ -23,9 +15,9 @@ So the course started with
 
 * easiness
 * joy
-* wisdom.  
+* wisdom.
 
-I expect to learn R and Git integration, _and already did_. Looking forward to hear ideas for some **data analysis**: I have experience with another software and R packages as well, but with R it's sometimes difficult to see which packages and tehchiques are used and recommended.  
+I expect to learn R and Git integration, _and already did_. Looking forward to hear ideas for some **data analysis**: I have experience with another software and R packages as well, but with R it's sometimes difficult to see which packages and techniques are supposed or recommended to be used in specific tasks. Also it is interesting to see how approach in data science and conventional statistics differs.  
 
 I heard about this course when Kimmo was advertising it via Statnet mailing list.  
 
@@ -37,7 +29,7 @@ I heard about this course when Kimmo was advertising it via Statnet mailing list
 ```
 ### ...and inline code.  
 
-Square root of two equals `r sqrt(2)`.
+Square root of two i.e. $\sqrt 2$ equals `r sqrt(2)`.
 
 ### My GithHub repository:  
 

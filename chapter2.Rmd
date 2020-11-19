@@ -1,5 +1,4 @@
-# Introduction to Open Data Science 2020, Week 2
-## Regression analysis excercise
+# Week 2, Linear Regression
 
 This week's exercise is about regression analysis. Tasks include:
 
@@ -9,10 +8,7 @@ This week's exercise is about regression analysis. Tasks include:
 
 Source data: [http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/learning2014.txt](http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/learning2014.txt).
 
-```{r}
-date()
-```
-### Starting routines and getting to know data
+## Starting routines and getting to know data
 
 ```{r}
 #Setting working path
@@ -34,7 +30,7 @@ prop.table(table(exercise2_data$gender))
 ```
 So that was basic information about data set, which consist of 166 observations and single factor, six continuous variables, with 66% of subjects being female. For more information, please visit [http://www.helsinki.fi/~kvehkala/JYTmooc/JYTOPKYS3-meta.txt](http://www.helsinki.fi/~kvehkala/JYTmooc/JYTOPKYS3-meta.txt) where the original data set described.
 
-### Visualizing pairwise distributions
+## Visualizing pairwise distributions
 
 ```{r}
 #Loading additional packages and plotting bivariate distributions 
@@ -59,7 +55,7 @@ surf * Points      | -0.144
 
 -> Let's select these three as predictors. Points is the outcome.
 
-### Multiple linear regression model #1
+## Multiple linear regression model #1
 
 ```{r}
 glm1 <- lm(Points ~ Attitude + stra + surf, data=exercise2_data)
@@ -70,7 +66,7 @@ Attitude is the only statistically significant predictor for Points (p<0.001).
 
 Surf is least significant predictor: let's remove it from the model.
 
-### Multiple linear regression model #2
+## Multiple linear regression model #2
 
 ```{r}
 glm2 <- lm(Points ~ Attitude + stra, data=exercise2_data)
@@ -81,7 +77,7 @@ Attitude is still the only statistically significant predictor for Points (p<0.0
 
 Stra is not significant, but still p<0.1. We might leave the model as it is, but out of curiosity, let's remove Stra anyway and see what happens. 
 
-### Simple linear regression model
+## Simple linear regression model
 
 ```{r}
 glm3 <- lm(Points ~ Attitude, data=exercise2_data)
@@ -98,7 +94,7 @@ Slope parameter of Attitude equals to 0.352, i.e. single unit increase in Attitu
 
 Coefficents of determination: unadjusted 19.1%, adjusted 18.6%. Both are a bit lower than in previous model. But let's leave it that way.
 
-### Diagnostic plots for model #3
+## Diagnostic plots for model #3
 
 ```{r}
 #Drawing diagnostic plots. Choosing the plots 1, 2 and 5. Full list of plot options:
