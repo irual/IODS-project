@@ -1,0 +1,327 @@
+# Week 5, Dimensionality reduction techniques
+
+This week's exercise is about reducing dimensions. Tasks include:
+
+* Data exploration
+* Standardization
+* Principal Component Analysis (PCA)
+* Bonus-task: horrible nightmare with package dependency hell
+* Multiple Correspondence Analysis (MCA)
+
+## 0. Starting routines and getting to know data
+
+Setting working path, loading library and data set.
+
+```{r}
+#Setting working path
+setwd("/home/ls/R/projekteja/IODS-project/")
+
+#Reading dataset from the file
+human <- read.table("./data/human.rData")
+#n=155, 8 vars.
+```
+
+## 1. Graphical overview
+1. Show a graphical overview of the data and show summaries of the variables in the data. Describe and interpret the outputs, commenting on the distributions of the variables and the relationships between them. (0-3 points)
+
+```{r, out.width = '100%', fig.asp=0.5}
+
+library(GGally)   #for ggpairs
+library(ggplot2)  #for ggplot
+library(corrplot) #for corrplot
+library(tidyr)    #for gather
+
+cols <- colnames(human)
+
+#Boxplots for each variable
+gather(human[cols]) %>% ggplot(aes(y=value)) + 
+  facet_wrap("key", scales = "free", ncol=8) + 
+  geom_boxplot(fill="#FFDB6D")
+
+#Histogram for each variable
+gather(human[cols]) %>% ggplot(aes(y=value)) + 
+  facet_wrap("key", scales = "free", ncol=8) + 
+  geom_histogram(fill="#FFDB6D",col="black")
+```
+
+```{r, out.width = '100%', fig.asp=1}
+#Pairwise and single distributions with density lines
+par(col.sub="white")
+ggpairs(human, aes(alpha=0.3),
+        upper=list(continuous="density"),
+        lower=list(combo=wrap("facethist"))) +
+   theme(panel.background=element_rect(fill="white", colour="grey50"))
+```
+
+```{r}
+#Correlation plots
+cor_matrix<-cor(human)
+corrplot.mixed(cor_matrix, 
+               tl.cex=0.75, number.cex=0.75, number.digits=2, lower.col="black")
+
+summary(human)
+```
+
+Variables have clearly different scales and different shapes. Largest range is 0 to 120 000 (**GNI**; _Gross national income per capita_) and smallest from ~0 to ~1 (**lab.ratio**; _Labour female/male ratio_). Most distributions are more or less skewed.
+
+## 2. Principal component analysis (PCA)
+Performing principal component analysis (PCA) on the not standardized human data. Showing the variability captured by the principal components. Drawing a biplot displaying the observations by the first two principal components (PC1 coordinate in x-axis, PC2 coordinate in y-axis), along with arrows representing the original variables.
+
+```{r}
+# perform principal component analysis (with the SVD method)
+pca_human <- prcomp(human)
+
+#PCA results in nutshell
+summary(pca_human)
+
+# draw a biplot of the principal component representation and the original variables
+biplot(pca_human, choices = 1:2, cex=c(0.5,1), col=c("grey","deeppink"))
+```
+
+OK, this doesn't make sense. **GNI** dominates the model since it has so large scale compared to other ones. Would be against the spirit of statistics to describe this more. 
+
+## 3. Standardization and PCA
+
+Standardizing the variables in the human data and repeating the above analysis. Interpreting the results of both analysis (with and without standardizing). Comparing results.
+
+```{r}
+# standardize the variables
+human_std <- scale(human)
+
+# print out summaries of the standardized variables
+summary(human_std)
+```
+
+Now each variable has mean 0 and standard deviation (and variance) 1.
+
+```{r}
+# perform principal component analysis (with the SVD method)
+pca_human_std <- prcomp(human_std)
+
+pca_human_std
+summary(pca_human_std)
+
+# draw a biplot of the principal component representation and the original variables
+biplot(pca_human_std, choices = 1:2, cex=c(0.5,1), col=c("grey","deeppink"))
+```
+
+This seems more reasonable, each variables has comparable weight in the analysis.
+
+Unstandardized analysis: GNI dominates the model since it has so large scale compared to other ones. Practically all variability is associated with first principal component (proportion rounds up to 100%).
+
+Standardized analysis: 53% of variance is associated with 1st principal component, 16% with second, 10 % with 3rd etc. Most variables are contributing nicely the first PC, with moderate negative or positive correlations while **Lab.ratio** and **Rep.pct** are not contributing that much. 
+
+From the biplot we can see that all variables has somewhat similar arrow size i.e. effect. Most variables are contributing to first PC since arrows are parallel to PC1. Lab.ratio and Rep.pct are almost orthogonal to that, they are associated with PC2.
+
+Both models are conducted with singular value decomposition (SVD) method.
+
+## 4. Interpretation
+Personal interpretations of the first two principal component dimensions based on the biplot drawn after PCA on the standardized human data:
+
+So PC1+PC2 explains 54%+16% of total variance.  
+
+PC1 is mostly contributed by **Mat.Mor** (_Maternal mortality ratio_), **Adol.BR** (_Adolescent birth rate_) and with opposite direction by **exp.life** (_Life expectancy at birth_), **lab.ratio** (_Female/male ratio of population with secondary education_), **exp.educ** (_Expected years of schooling_) and **GNI** (_Gross national income (GNI) per capita_). So we can interpret this as contextually negative factor, which is getting higher values from poor and unwealthy conditions and low gender equality and education.  
+
+PC2 is mostly contributed by **lab.ratio** (_Female/male ratio of labour force participation ratios_) and **rep.pct** (_Percent of female representation in Parliament_). This is "positive" factor, which is associated with better gender equality.  
+
+Maybe one could summarize all this that PC1 is more about economy and PC2 is about gender equality.
+
+## 5. Multiple corresponsense analysis (MCA)
+
+### My amazing adventures with R #1542: Horrible nightmare with package dependency hell (foul language warning!)
+
+> library(FactoMineR)
+
+_--> "there is no package called ‘FactoMineR’_
+
+Me: "OK, no problem. Let's install it."
+
+> install.packages("FactoMineR")
+
+_-->  
+1: In utils::install.packages("car", repos = "https://cran.rstudio.com/") :  installation of package ‘nloptr’ had non-zero exit status  
+2: In utils::install.packages("car", repos = "https://cran.rstudio.com/") :  installation of package ‘lme4’ had non-zero exit status  
+3: In utils::install.packages("car", repos = "https://cran.rstudio.com/") :  installation of package ‘car’ had non-zero exit status  
+4: In utils::install.packages("FactoMineR", repos = "https://cran.rstudio.com/") :  installation of package ‘FactoMineR’ had non-zero exit status_
+
+Me: "Hmm... no problem. Lets install those missing dependencies first then."
+
+> install.packages("car")
+
+_-->  
+ERROR: configuration failed for package ‘nloptr’  
+ERROR: dependency ‘nloptr’ is not available for package ‘lme4’  
+* removing ‘/home/ls/R/x86_64-suse-linux-gnu-library/3.5/lme4’  
+Warning in install.packages :  
+  installation of package ‘lme4’ had non-zero exit status  
+ERROR: dependencies ‘pbkrtest’, ‘lme4’ are not available for package ‘car’_  
+
+Me: "Me: "Well, this is getting akward. But we'll sort this out. Lets install nloptr first then."
+
+> install.packages("nloptr")
+
+_-->  
+../libtool: line 1102: ERROR:: command not found  
+make[2]: *** [Makefile:371: libutil.la] Error 127  
+ERROR: configuration failed for package ‘nloptr’_  
+
+Me: "☠#💩!"
+
+...A lot of surfing around...
+
+Me: "Installing library libnlopt0 into operating system may help."
+
+**[installing libnlopt0 (A library for nonlinear optimization) with OS software management system]**
+
+> install.packages("nloptr")
+
+_-->  
+../libtool: line 1102: ERROR:: command not found  
+make[2]: *** [Makefile:371: libutil.la] Error 127  
+ERROR: configuration failed for package ‘nloptr’_  
+
+Me: "☠#☣%☭!
+
+...more surfing around...
+
+Me: "Installing libnlopt0 may be the key."
+
+**[installing nlopt-devel (Development files for nlopt) with OS software management system]**
+
+> install.packages("nloptr")
+
+It worked! Woohoo!
+
+> install.packages("lme4")
+
+Works! Yippee!
+
+> install.packages("car")
+
+--> R: _"No way, dude; dependency ‘pbkrtest’ is not available for package ‘car’"._
+
+> install.packages("pbkrtest")
+
+--> R: _"Come on, such package doesn't even exist!"._  
+
+Me: "☠#☣%☭¤💩!!!"   
+
+...still more surfing around...
+
+Me: "Let's try the trick from [https://stackoverflow.com/questions/35207624/package-pbkrtest-is-not-available-for-r-version-3-2-2](https://stackoverflow.com/questions/35207624/package-pbkrtest-is-not-available-for-r-version-3-2-2), with updated package version.  
+
+Manual installation of pbkrtest_0.4-7:
+
+> packageurl <- "https://cran.r-project.org/src/contrib/Archive/pbkrtest/pbkrtest_0.4-7.tar.gz" 
+> install.packages(packageurl, repos=NULL, type="source")
+
+It worked!
+
+> install.packages("car")
+
+Works now!!
+
+> install.packages("FactoMineR")
+
+And finally this works as well! Victory!!!
+
+```{r}
+library(FactoMineR)
+```
+
+```{r}
+#Loading tea data set.
+data('tea')
+
+dim(tea)
+str(tea)
+summary(tea)
+```
+
+Tea data description from FactoMineR package:  
+
+_A data frame with 300 rows and 36 columns. Rows represent the individuals, columns represent the different questions. The first 18 questions are active ones, the 19th is a supplementary quantitative variable (the age) and the last variables are supplementary categorical variables._
+
+Let's remove supplementary variables, i.e. retain first 18 questions to keep this simple. Number of cases is only 300, so might be good idea to avoid super-complicated models.
+
+```{r out.width='100%', fig.asp=1.25}
+#Using only first "active questions" only
+tea2 <- dplyr::select(tea,1:18)
+
+#Barplots for each variable
+gather(tea2) %>% ggplot(aes(value)) + 
+  geom_bar(col="black", fill="#FFDB6D", width=0.667) + 
+  facet_wrap("key", scales="free", ncol=6) + 
+  labs(x="") +
+  theme(
+    axis.text.x=element_text(angle=45, hjust=1, size=7),
+    panel.background = element_blank(),
+    strip.background = element_blank()
+  )
+
+```
+
+### Analysis
+
+```{r out.width='75%', fig.asp=1}
+# multiple correspondence analysis 
+mca <- MCA(tea2, graph=FALSE) 
+
+# summary of the model 
+summary(mca) 
+```
+
+In the summary output we can see...
+
+**Eigenvalues**: the variances and the percentages of variances retained by each dimension  
+- there are 27 dimensions  
+- first dimension retains the total variance most, i.e. 9.9%  
+- only four first dimensions retains >5% of the variance, total (`r 9.885 + 8.103 + 6.001 + 5.204` %).  
+
+**Individuals**: only first 10 individuals (rows) are shown  
+- individuals contribution (%) on the dimension is highest on the row2, dimension 3  
+- cos2 (squared correlations) on the dimensions is highest again on the row2, dimension 3.  
+
+**Categories** table shows:  
+- the coordinates of the variable categories  
+- the contribution (%)  
+- the cos2 (squared correlations)  
+- v.test values, which follows normal distribution: if the value is above/below +/-1.96, the coordinate is significantly different from zero  
+- we can see that strongest effect seem to be on the breakfast/no-breakfast selection where v.test values are +/-8.0.  
+
+**Categorical variables**:  
+- the squared correlations between each variable and dimensions     
+- values close to one indicates a strong link with variable and dimension  
+- in this table the highest value 0.372 is for "tearoom".
+
+### Visualization
+
+<!-- 
+MCA help page in R lists following plotting options:  
+* eig: a matrix containing all the eigenvalues, the percentage of variance and the cumulative percentage of variance  
+* var: a list of matrices containing all the results for the active variables (coordinates, square cosine, contributions, v.test, square correlation ratio)   
+* ind: a list of matrices containing all the results for the active individuals (coordinates, square cosine, contributions)   
+* ind.sup: a list of matrices containing all the results for the supplementary individuals (coordinates, square cosine)   
+* quanti.sup: a matrix containing the coordinates of the supplementary quantitative variables (the correlation between a variable and an axis is equal to the variable coordinate on the axis)   
+* quali.sup: a list of matrices with all the results for the supplementary categorical variables (coordinates of each categories of each variables, square cosine and v.test which is a criterion with a Normal distribution, square correlation ratio)   
+* call: a list with some statistics -->
+
+```{r}
+plot(mca, invisible=c("ind"), habillage="quali") 
+plot(mca,invisible=c("quali.sup","quanti.sup"),cex=0.8)
+plotellipses(mca,keepvar="Tea")
+```
+
+There are various plotting options. I made three different biplots.
+
+Let's first focus on plot #1. It shows individual variable categories in relation to dimensions 1 and 2. We'll see that there are three prominent categories:  
+- teashop (_tea is purchased merely from tea shop; never from chain store_)  
+- tea is unpackaged (_'never from bag'_)  
+- high tea price (_'p_upscale'_)  
+These categories have distinct location on dimension 2, but they are somewhat similar to each other.
+
+Plot #2 shows "individual" as well. We can see, for example that row 273 is a bit different than other cases what comes to location in dimension 1. Otherwise there are no rows that are clearly nonsimilar than other categories.
+
+Plot #3 show individuals in relation to dimensions 1 and 2, but cases are marked with different colors indication tea types (black, Earl Gray, green). We can see that these three groups are are located differently in this 2-dimensional space. Kind of cluster centers are shown with ellipses for these three categories as well.  
+
+**Conclusion.** Selecting and drinking tea is complicated and multidimensional phenomenon.
