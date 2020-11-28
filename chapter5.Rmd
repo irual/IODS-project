@@ -22,7 +22,8 @@ human <- read.table("./data/human.rData")
 ```
 
 ## 1. Graphical overview
-1. Show a graphical overview of the data and show summaries of the variables in the data. Describe and interpret the outputs, commenting on the distributions of the variables and the relationships between them. (0-3 points)
+
+Showing a graphical overview of the data and summaries of the variables in the data.  
 
 ```{r, out.width = '100%', fig.asp=0.5}
 
@@ -67,7 +68,9 @@ corrplot.mixed(cor_matrix,
 summary(human)
 ```
 
-Variables have clearly different scales and different shapes. Largest range is 0 to 120 000 (**GNI**; _Gross national income per capita_) and smallest from ~0 to ~1 (**lab.ratio**; _Labour female/male ratio_). Most distributions are more or less skewed.
+All variables are numerical and continuous and they have clearly different scales and different shapes. Largest range is ~600 to ~12 000 (**GNI**; _Gross national income per capita_) and smallest from ~0 to ~1 (**lab.ratio**; _Labour female/male ratio_). Most distributions are more or less skewed.  
+
+Correlations (Pearson's $r$) between variables are mostly high or moderate, expect between **lab.ratio**; _Labour female/male ratio_ and other variables, and between **Rep.pct**; _Female % representation in Parliament_ and other variables. Some of the coefficients are indicating positive correlation, others negative one (please see corr.plot below for details).  
 
 ## 2. Principal component analysis (PCA)
 Performing principal component analysis (PCA) on the not standardized human data. Showing the variability captured by the principal components. Drawing a biplot displaying the observations by the first two principal components (PC1 coordinate in x-axis, PC2 coordinate in y-axis), along with arrows representing the original variables.
@@ -174,7 +177,7 @@ Me: "☠#💩!"
 
 ...A lot of surfing around...
 
-Me: "Installing library libnlopt0 into operating system may help."
+Internet: "Installing library libnlopt0 into operating system may help."
 
 **[installing libnlopt0 (A library for nonlinear optimization) with OS software management system]**
 
@@ -189,7 +192,7 @@ Me: "☠#☣%☭!
 
 ...more surfing around...
 
-Me: "Installing libnlopt0 may be the key."
+Internet: "Installing libnlopt0 may be the key."
 
 **[installing nlopt-devel (Development files for nlopt) with OS software management system]**
 
